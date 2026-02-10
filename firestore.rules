@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    function isApproved() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isApproved == true;
+    }
+
+    match /users/{userId} {
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isAdmin()
+        || (isSignedIn()
+            && request.auth.uid == userId
+            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isApproved', 'uid']));
+      allow delete: if isAdmin();
+    }
+
+    match /applications/{docId} {
+      allow read, update, delete: if isAdmin();
+      allow create: if false;
+    }
+
+    match /approved_emails/{email} {
+      allow read: if isAdmin() || (isSignedIn() && request.auth.token.email == email);
+      allow write: if isAdmin();
+    }
+
+    match /pages/{pageId} {
+      allow read: if isAdmin() || isApproved();
+      allow write: if isAdmin();
+    }
+
+    match /login_events/{docId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+  }
+}
