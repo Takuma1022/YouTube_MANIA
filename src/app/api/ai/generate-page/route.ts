@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import type { ContentItem, PageSection } from '@/types/content';
 
 const slugify = (value: string) =>
   value
@@ -12,7 +13,7 @@ const slugify = (value: string) =>
 
 const buildTemplate = (instruction: string) => {
   const title = instruction.split(/[。\n]/)[0]?.trim() || '新規ページ';
-  const baseSections = [
+  const baseSections: PageSection[] = [
     {
       id: 'intro',
       title: '概要',
@@ -21,12 +22,12 @@ const buildTemplate = (instruction: string) => {
           id: 'intro-text',
           type: 'text',
           text: `${title}の要点とゴールをまとめます。`,
-        },
+        } as ContentItem,
       ],
     },
   ];
 
-  const sections = [...baseSections];
+  const sections: PageSection[] = [...baseSections];
   if (instruction.includes('動画')) {
     sections.push({
       id: 'videos',
@@ -37,7 +38,7 @@ const buildTemplate = (instruction: string) => {
           type: 'video',
           title: 'メイン動画',
           url: 'https://www.youtube.com/embed/',
-        },
+        } as ContentItem,
       ],
     });
   }
@@ -51,7 +52,7 @@ const buildTemplate = (instruction: string) => {
           type: 'audio',
           title: '補足音声',
           url: '',
-        },
+        } as ContentItem,
       ],
     });
   }
@@ -65,7 +66,7 @@ const buildTemplate = (instruction: string) => {
           type: 'url',
           title: '参考リンク',
           url: 'https://example.com',
-        },
+        } as ContentItem,
       ],
     });
   }
