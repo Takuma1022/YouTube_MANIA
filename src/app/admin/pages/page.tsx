@@ -168,13 +168,19 @@ const renderRichText = (value: string) => {
   };
 
   const withLineBreaks = (nodes: React.ReactNode[]) => {
-    const flattened = nodes.flatMap((node, index) => {
+    const flattened: React.ReactNode[] = [];
+    nodes.forEach((node, index) => {
       if (typeof node === 'string') {
-        return node.split('\n').flatMap((line, lineIndex, arr) =>
-          lineIndex < arr.length - 1 ? [line, <br key={`br-${index}-${lineIndex}`} />] : [line]
-        );
+        const parts = node.split('\n');
+        parts.forEach((line, lineIndex) => {
+          flattened.push(line);
+          if (lineIndex < parts.length - 1) {
+            flattened.push(<br key={`br-${index}-${lineIndex}`} />);
+          }
+        });
+        return;
       }
-      return [node];
+      flattened.push(node);
     });
     return flattened;
   };
