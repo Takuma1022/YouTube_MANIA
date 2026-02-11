@@ -49,10 +49,11 @@ const computeTableView = (item: ContentItem) => {
 };
 
 const renderTablePreview = (item: ContentItem) => {
-  if (item.type !== 'table' || !item.table) return null;
+  const table = item.type === 'table' ? item.table : undefined;
+  if (!table) return null;
   const view = computeTableView(item);
-  const visibleIndexes = view?.visibleIndexes ?? item.table.headers.map((_, idx) => idx);
-  const widths = view?.widths ?? item.table.headers.map(() => 180);
+  const visibleIndexes = view?.visibleIndexes ?? table.headers.map((_, idx) => idx);
+  const widths = view?.widths ?? table.headers.map(() => 180);
   return (
     <div className="overflow-x-auto rounded-2xl border border-white/10 bg-black/30">
       <table className="min-w-[720px] w-full border-collapse text-xs">
@@ -60,17 +61,17 @@ const renderTablePreview = (item: ContentItem) => {
           <tr className="bg-white/5 text-slate-300">
             {visibleIndexes.map((headerIndex) => (
               <th
-                key={`${item.table.headers[headerIndex]}-${headerIndex}`}
+                key={`${table.headers[headerIndex]}-${headerIndex}`}
                 className="border-b border-white/10 px-4 py-3 text-left font-semibold tracking-wide"
                 style={{ width: `${widths[headerIndex]}px` }}
               >
-                {prettifyHeader(item.table.headers[headerIndex])}
+                {prettifyHeader(table.headers[headerIndex])}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {item.table.rows.map((row, rowIndex) => (
+          {table.rows.map((row, rowIndex) => (
             <tr
               key={`row-${rowIndex}`}
               className={`border-b border-white/5 text-slate-100 transition hover:bg-white/5 ${
