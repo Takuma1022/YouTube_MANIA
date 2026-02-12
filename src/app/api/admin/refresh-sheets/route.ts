@@ -100,16 +100,31 @@ export async function POST(req: Request) {
       const existingTable = pageData.sections?.[0]?.items?.[0]?.table;
       if (!existingTable) continue;
 
-      const existingRowCount = existingTable.rows?.length || 0;
-      const newRowCount = table.rows.length;
+      // 既存行の1列目の値をセットにして重複チェック
+      const existingKeys = new Set<string>();
+      (existingTable.rows || []).forEach((row: any) => {
+        const firstCell = row.cells?.[0];
+        const key = firstCell?.type === 'link'
+          ? (firstCell.label || firstCell.url || '')
+          : (firstCell?.value || '');
+        if (key) existingKeys.add(key.trim());
+      });
 
-      if (newRowCount <= existingRowCount) {
+      // スプレッドシートの行のうち、既存に無いものだけ抽出
+      const addedRows: string[][] = [];
+      table.rows.forEach((row) => {
+        const firstCol = (row[0] || '').trim();
+        if (!firstCol) return;
+        if (!existingKeys.has(firstCol)) {
+          addedRows.push(row);
+        }
+      });
+
+      if (addedRows.length === 0) {
         results.push(`${pageData.title}: 変更なし`);
         continue;
       }
 
-      // 新しい行だけ取得
-      const addedRows = table.rows.slice(existingRowCount);
       const pageSlugBase = pageData.slug || pageDoc.id;
 
       const detailColumnIndexes = table.headers
@@ -119,6 +134,7 @@ export async function POST(req: Request) {
       const newDetailPages: any[] = [];
 
       const newTableRows = addedRows.map((row, addedIndex) => {
+        const existingRowCount = existingTable.rows?.length || 0;
         const rowIndex = existingRowCount + addedIndex;
         let detailUrl: string | undefined;
         const cells = row.map((value, colIndex) => {
