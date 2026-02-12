@@ -18,6 +18,20 @@ export async function POST(req: Request) {
     }
 
     const docId = email;
+    const existingDoc = await adminDb.collection('applications').doc(docId).get();
+    const existingData = existingDoc.exists ? existingDoc.data() : null;
+
+    // 既に承認済みの場合は再申請不要
+    if (existingData?.status === 'approved') {
+      return NextResponse.json({ message: '既に承認済みです。ログインページからログインしてください。' }, { status: 400 });
+    }
+
+    // 既にpending状態の場合
+    if (existingData?.status === 'pending') {
+      return NextResponse.json({ message: '申請は既に受け付けています。承認までお待ちください。' }, { status: 400 });
+    }
+
+    // rejected状態 or 新規 → pending に設定
     await adminDb.collection('applications').doc(docId).set(
       {
         name,
@@ -28,7 +42,8 @@ export async function POST(req: Request) {
       { merge: true }
     );
 
-    return NextResponse.json({ ok: true });
+    const isReapply = existingData?.status === 'rejected';
+    return NextResponse.json({ ok: true, reapply: isReapply });
   } catch (error) {
     return NextResponse.json({ message: '申請の保存に失敗しました。' }, { status: 500 });
   }

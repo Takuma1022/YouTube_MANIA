@@ -17,14 +17,18 @@ export const ApplicationForm = () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email }),
     });
+    const data = await res.json().catch(() => ({}));
     if (res.ok) {
       setStatus('done');
-      setMessage('申請を受け付けました。承認までお待ちください。');
+      setMessage(
+        data?.reapply
+          ? '再申請を受け付けました。管理者の承認をお待ちください。'
+          : '申請を受け付けました。承認までお待ちください。'
+      );
       setName('');
       setEmail('');
       return;
     }
-    const data = await res.json().catch(() => ({}));
     setStatus('error');
     setMessage(data?.message || '送信に失敗しました');
   };

@@ -5,4 +5,6 @@ export type Application = {
   status: 'pending' | 'approved' | 'rejected';
   createdAt?: string | Date | null;
   approvedAt?: string | Date | null;
+  rejectedAt?: string | Date | null;
+  rejectedBy?: string;
 };

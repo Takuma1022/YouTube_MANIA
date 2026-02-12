@@ -46,6 +46,19 @@ export default function AdminPage() {
     await refresh();
   };
 
+  const reject = async (app: Application) => {
+    if (!app.email) return;
+    if (!confirm(`${app.name}（${app.email}）の申請を却下しますか？`)) return;
+    const token = await currentUser?.getIdToken();
+    if (!token) return;
+    await fetch('/api/admin/reject-application', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ applicationId: app.id, idToken: token }),
+    });
+    await refresh();
+  };
+
   const refreshSheets = async () => {
     setRefreshing(true);
     setRefreshResult('');
@@ -116,12 +129,20 @@ export default function AdminPage() {
                   <p className="text-sm font-semibold">{app.name}</p>
                   <p className="text-xs text-slate-300">{app.email}</p>
                 </div>
-                <button
-                  onClick={() => approve(app)}
-                  className="rounded-full bg-emerald-400 px-4 py-1 text-xs font-semibold text-slate-900 shadow-lg shadow-emerald-500/30 hover:bg-emerald-300"
-                >
-                  承認
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => approve(app)}
+                    className="rounded-full bg-emerald-400 px-4 py-1 text-xs font-semibold text-slate-900 shadow-lg shadow-emerald-500/30 hover:bg-emerald-300"
+                  >
+                    承認
+                  </button>
+                  <button
+                    onClick={() => reject(app)}
+                    className="rounded-full bg-rose-500 px-4 py-1 text-xs font-semibold text-white shadow-lg shadow-rose-500/30 hover:bg-rose-400"
+                  >
+                    却下
+                  </button>
+                </div>
               </div>
             ))
           )}
