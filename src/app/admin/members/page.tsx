@@ -1,9 +1,10 @@
  'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
+import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebaseClient';
 import { useAuth } from '@/contexts/AuthContext';
+import type { Application } from '@/types/application';
 
 type MemberStatus = 'pending' | 'approved' | 'suspended';
 
@@ -35,9 +36,10 @@ const formatDateTime = (value?: any) => {
 };
 
 export default function MembersPage() {
-  const { userProfile, signInWithGoogle, loading } = useAuth();
+  const { userProfile, signInWithGoogle, loading, currentUser } = useAuth();
   const [members, setMembers] = useState<ApprovedMember[]>([]);
   const [logs, setLogs] = useState<LoginEvent[]>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
   const [importing, setImporting] = useState(false);
   const [message, setMessage] = useState('');
   const [searchText, setSearchText] = useState('');
@@ -61,9 +63,43 @@ export default function MembersPage() {
     setLogs(docs);
   };
 
+  const loadApplications = async () => {
+    const q = query(collection(db, 'applications'), where('status', '==', 'pending'));
+    const snap = await getDocs(q);
+    const docs = snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as any) })) as Application[];
+    setApplications(docs);
+  };
+
+  const approveApplication = async (app: Application) => {
+    if (!app.email) return;
+    const token = await currentUser?.getIdToken();
+    if (!token) return;
+    await fetch('/api/admin/approve-application', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ applicationId: app.id, idToken: token }),
+    });
+    await loadApplications();
+    await loadMembers();
+  };
+
+  const rejectApplication = async (app: Application) => {
+    if (!app.email) return;
+    if (!confirm(`${app.name}（${app.email}）の申請を却下しますか？`)) return;
+    const token = await currentUser?.getIdToken();
+    if (!token) return;
+    await fetch('/api/admin/reject-application', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ applicationId: app.id, idToken: token }),
+    });
+    await loadApplications();
+  };
+
   useEffect(() => {
     loadMembers().catch(() => {});
     loadLogs().catch(() => {});
+    loadApplications().catch(() => {});
   }, []);
 
   const lastLoginMap = useMemo(() => {
@@ -216,7 +252,7 @@ export default function MembersPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
-        <h1 className="text-3xl font-semibold">会員名簿管理</h1>
+        <h1 className="text-3xl font-semibold">会員管理</h1>
         <p className="mt-2 text-sm text-slate-200">会員の基本情報と最終ログインを確認できます。</p>
       </div>
 
@@ -276,7 +312,7 @@ export default function MembersPage() {
         </div>
       </div>
 
-      {(['pending', 'approved', 'suspended'] as MemberStatus[]).map((status) => {
+      {(['pending', 'approved', 'suspended'] as MemberStatus[]).flatMap((status) => {
         const title =
           status === 'pending' ? '承認待ち' : status === 'approved' ? '承認済み' : '停止';
         const list = members
@@ -289,7 +325,8 @@ export default function MembersPage() {
               (member.email || '').toLowerCase().includes(q)
             );
           });
-        return (
+
+        const memberSection = (
           <div key={status} className="rounded-3xl border border-white/10 bg-white/5 p-8">
             <h2 className="text-lg font-semibold">{title}</h2>
             <div className="mt-4 overflow-x-auto rounded-2xl border border-white/10 bg-black/30">
@@ -390,6 +427,46 @@ export default function MembersPage() {
             </div>
           </div>
         );
+
+        // 承認済みセクションの直前に参加申請セクションを挿入
+        if (status === 'approved') {
+          return [
+            <div key="applications" className="rounded-3xl border border-white/10 bg-white/5 p-8">
+              <h2 className="text-lg font-semibold">参加申請</h2>
+              <div className="mt-4 space-y-3">
+                {applications.length === 0 ? (
+                  <p className="text-sm text-slate-200">承認待ちの申請はありません。</p>
+                ) : (
+                  applications.map((app) => (
+                    <div key={app.id} className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 p-4">
+                      <div>
+                        <p className="text-sm font-semibold">{app.name}</p>
+                        <p className="text-xs text-slate-300">{app.email}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => approveApplication(app)}
+                          className="rounded-full bg-emerald-400 px-4 py-1 text-xs font-semibold text-slate-900 shadow-lg shadow-emerald-500/30 hover:bg-emerald-300"
+                        >
+                          承認
+                        </button>
+                        <button
+                          onClick={() => rejectApplication(app)}
+                          className="rounded-full bg-rose-500 px-4 py-1 text-xs font-semibold text-white shadow-lg shadow-rose-500/30 hover:bg-rose-400"
+                        >
+                          却下
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>,
+            memberSection,
+          ];
+        }
+
+        return [memberSection];
       })}
     </div>
   );

@@ -41,7 +41,7 @@ export const SiteHeader = () => {
           )}
           {isAdmin && (
             <Link href="/admin/members" className="hover:text-white">
-              会員名簿
+              会員管理
             </Link>
           )}
           {userProfile ? (
