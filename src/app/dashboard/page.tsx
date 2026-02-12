@@ -74,8 +74,7 @@ export default function DashboardPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
-        <h1 className="text-3xl font-semibold">会員ページ</h1>
-        <p className="mt-2 text-sm text-slate-200">最新の学習コンテンツを確認できます。</p>
+        <h1 className="text-3xl font-semibold">YouTubeMANIA 資料まとめ</h1>
         <div className="mt-4">
           <a
             href="/"
