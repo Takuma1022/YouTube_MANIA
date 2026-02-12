@@ -103,7 +103,7 @@ export async function POST(req: Request) {
         }
 
         const isDetailColumn = detailColumnIndexes.some((item) => item.idx === colIndex);
-        if (isDetailColumn && trimmed.length > 180) {
+        if (isDetailColumn && trimmed.length > 0) {
           const baseTitle = row[0]?.trim() || `解説 ${rowIndex + 1}`;
           const detailSlug = slugify(`${pageSlugBase}-${baseTitle}-${header}-${rowIndex + 1}`);
           detailPages.push({
