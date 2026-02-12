@@ -8,7 +8,7 @@ export default function Home() {
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.25),transparent_55%)]" />
         <p className="text-sm uppercase tracking-[0.3em] text-indigo-200">Members Only</p>
         <h1 className="mt-4 text-4xl font-semibold leading-tight md:text-5xl">
-          YouTube MANIA 会員サイト
+          YouTube MANIA 資料まとめ
         </h1>
         <div className="mt-8 flex flex-wrap gap-3">
           <a
