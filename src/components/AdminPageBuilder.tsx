@@ -66,7 +66,33 @@ export const AdminPageBuilder = () => {
       return;
     }
     const data = await res.json();
-    setPage(data.page);
+    const incoming = data.page;
+    if (page && page.sourceKey === incoming.sourceKey) {
+      setPage({
+        ...incoming,
+        title: page.title || incoming.title,
+        description: page.description || incoming.description,
+        published: page.published,
+        order: page.order ?? incoming.order,
+      });
+    } else {
+      const existingRef = collection(db, 'pages');
+      const q = query(existingRef, where('sourceKey', '==', incoming.sourceKey));
+      const snap = await getDocs(q);
+      const existing = snap.docs.find((d) => d.data().slug === incoming.slug);
+      if (existing) {
+        const existingData = existing.data() as any;
+        setPage({
+          ...incoming,
+          title: existingData.title || incoming.title,
+          description: existingData.description || incoming.description,
+          published: existingData.published ?? incoming.published,
+          order: existingData.order ?? incoming.order,
+        });
+      } else {
+        setPage(incoming);
+      }
+    }
     setImporting(false);
   };
 
