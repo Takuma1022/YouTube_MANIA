@@ -1,0 +1,211 @@
+import { NextResponse } from 'next/server';
+import Papa from 'papaparse';
+import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { FieldValue } from 'firebase-admin/firestore';
+
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[\s_]+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .slice(0, 64);
+
+const isUrl = (value: string) => /^https?:\/\//i.test(value);
+
+const formatDetailText = (value: string) => {
+  const sentences = value
+    .split('。')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((s) => `${s}。`);
+  if (sentences.length === 0) return '';
+  const formatted: string[] = [];
+  sentences.forEach((sentence) => {
+    formatted.push(sentence);
+    if (sentence.length >= 60) {
+      formatted.push('');
+    }
+  });
+  return formatted.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+};
+
+const toSheetTable = (csvText: string): { headers: string[]; rows: string[][] } => {
+  const parsed = Papa.parse<string[]>(csvText.trim(), { skipEmptyLines: true });
+  const rows = parsed.data as string[][];
+  if (rows.length === 0) return { headers: [], rows: [] };
+  const headers = rows[0].map((cell) => String(cell || '').trim());
+  const bodyRows = rows
+    .slice(1)
+    .map((row) => headers.map((_, idx) => String(row[idx] || '').trim()));
+  return { headers, rows: bodyRows };
+};
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const idToken = String(body?.idToken || '');
+    if (!idToken) {
+      return NextResponse.json({ message: '認証が必要です。' }, { status: 401 });
+    }
+
+    const decoded = await adminAuth.verifyIdToken(idToken);
+    const adminSnap = await adminDb.collection('users').doc(decoded.uid).get();
+    const isAdmin = adminSnap.exists && adminSnap.data()?.isAdmin === true;
+    if (!isAdmin) {
+      return NextResponse.json({ message: '管理者のみ操作できます。' }, { status: 403 });
+    }
+
+    // sourceKey を持つ公開済みページを取得
+    const pagesSnap = await adminDb
+      .collection('pages')
+      .where('sourceKey', '!=', '')
+      .get();
+
+    if (pagesSnap.empty) {
+      return NextResponse.json({ message: '更新対象のページがありません。', updated: 0 });
+    }
+
+    // sourceKey ごとにグループ化（メインページのみ）
+    const pagesBySourceKey = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
+    pagesSnap.docs.forEach((doc) => {
+      const data = doc.data();
+      if (data.sourceKey && !data.parentSlug) {
+        pagesBySourceKey.set(data.sourceKey, doc);
+      }
+    });
+
+    let updatedCount = 0;
+    const results: string[] = [];
+
+    for (const [sourceKey, pageDoc] of pagesBySourceKey) {
+      const [sheetId, gid] = sourceKey.split(':');
+      if (!sheetId || !gid) continue;
+
+      const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=${gid}`;
+      let csvText: string;
+      try {
+        const res = await fetch(csvUrl, { cache: 'no-store' });
+        if (!res.ok) continue;
+        csvText = await res.text();
+      } catch {
+        continue;
+      }
+
+      const table = toSheetTable(csvText);
+      if (!table || table.headers.length === 0 || table.rows.length === 0) continue;
+
+      const pageData = pageDoc.data();
+      const existingTable = pageData.sections?.[0]?.items?.[0]?.table;
+      if (!existingTable) continue;
+
+      const existingRowCount = existingTable.rows?.length || 0;
+      const newRowCount = table.rows.length;
+
+      if (newRowCount <= existingRowCount) {
+        results.push(`${pageData.title}: 変更なし`);
+        continue;
+      }
+
+      // 新しい行だけ取得
+      const addedRows = table.rows.slice(existingRowCount);
+      const pageSlugBase = pageData.slug || pageDoc.id;
+
+      const detailColumnIndexes = table.headers
+        .map((header: string, idx: number) => ({ header, idx }))
+        .filter(({ header }: { header: string }) => /解説|説明|詳細/.test(header));
+
+      const newDetailPages: any[] = [];
+
+      const newTableRows = addedRows.map((row, addedIndex) => {
+        const rowIndex = existingRowCount + addedIndex;
+        let detailUrl: string | undefined;
+        const cells = row.map((value, colIndex) => {
+          const header = table.headers[colIndex] || `列${colIndex + 1}`;
+          const trimmed = value.trim();
+          if (!trimmed) {
+            return { type: 'text' as const, value: '' };
+          }
+          if (isUrl(trimmed)) {
+            return { type: 'link' as const, label: 'リンクを開く', url: trimmed };
+          }
+
+          const isDetailColumn = detailColumnIndexes.some((item: { idx: number }) => item.idx === colIndex);
+          if (isDetailColumn && trimmed.length > 0) {
+            const baseTitle = row[0]?.trim() || `解説 ${rowIndex + 1}`;
+            const detailSlug = slugify(`${pageSlugBase}-${baseTitle}-${header}-${rowIndex + 1}`);
+            newDetailPages.push({
+              slug: detailSlug,
+              title: baseTitle,
+              description: header,
+              published: pageData.published ?? false,
+              parentSlug: pageSlugBase,
+              sourceKey,
+              sections: [
+                {
+                  id: `${detailSlug}-section`,
+                  title: header,
+                  items: [
+                    {
+                      id: `${detailSlug}-text`,
+                      type: 'text',
+                      title: baseTitle,
+                      text: formatDetailText(trimmed),
+                    },
+                  ],
+                },
+              ],
+            });
+            detailUrl = detailUrl || `/dashboard/pages/${detailSlug}`;
+            return { type: 'link' as const, label: `${header}を読む`, url: `/dashboard/pages/${detailSlug}` };
+          }
+
+          return { type: 'text' as const, value: trimmed };
+        });
+        return { cells, detailUrl };
+      });
+
+      // 既存テーブルに新しい行を追記
+      const updatedRows = [...existingTable.rows, ...newTableRows];
+      const updatedSections = [{
+        ...pageData.sections[0],
+        items: [{
+          ...pageData.sections[0].items[0],
+          table: {
+            headers: table.headers,
+            rows: updatedRows,
+          },
+        }],
+      }];
+
+      // メインページを更新
+      await adminDb.collection('pages').doc(pageDoc.id).update({
+        sections: updatedSections,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+
+      // 新しい解説ページを保存
+      for (const detail of newDetailPages) {
+        await adminDb.collection('pages').doc(detail.slug).set({
+          ...detail,
+          updatedAt: FieldValue.serverTimestamp(),
+          createdAt: FieldValue.serverTimestamp(),
+        });
+      }
+
+      updatedCount++;
+      results.push(`${pageData.title}: ${addedRows.length}行追加`);
+    }
+
+    return NextResponse.json({
+      message: updatedCount > 0
+        ? `${updatedCount}件のページを更新しました。`
+        : '新しいデータはありませんでした。',
+      updated: updatedCount,
+      details: results,
+    });
+  } catch (error) {
+    return NextResponse.json({ message: '更新チェックに失敗しました。' }, { status: 500 });
+  }
+}

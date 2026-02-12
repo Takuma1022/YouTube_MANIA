@@ -12,6 +12,8 @@ export default function AdminPage() {
   const { userProfile, loading, currentUser } = useAuth();
   const [applications, setApplications] = useState<Application[]>([]);
   const [loginEvents, setLoginEvents] = useState<LoginEvent[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshResult, setRefreshResult] = useState('');
 
   const refresh = async () => {
     const q = query(collection(db, 'applications'), where('status', '==', 'pending'));
@@ -44,6 +46,28 @@ export default function AdminPage() {
     await refresh();
   };
 
+  const refreshSheets = async () => {
+    setRefreshing(true);
+    setRefreshResult('');
+    try {
+      const token = await currentUser?.getIdToken();
+      const res = await fetch('/api/admin/refresh-sheets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: token }),
+      });
+      const data = await res.json();
+      if (data.details && data.details.length > 0) {
+        setRefreshResult(data.details.join(' / '));
+      } else {
+        setRefreshResult(data.message || '完了');
+      }
+    } catch {
+      setRefreshResult('更新チェックに失敗しました。');
+    }
+    setRefreshing(false);
+  };
+
   if (loading) {
     return <div className="text-sm text-slate-300">読み込み中...</div>;
   }
@@ -60,6 +84,25 @@ export default function AdminPage() {
       </div>
 
       <AdminPageBuilder />
+
+      <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
+        <h2 className="text-xl font-semibold">スプレッドシート更新チェック</h2>
+        <p className="mt-2 text-sm text-slate-200">
+          保存済みページのスプレッドシートに新しい行が追加されていないかチェックし、あれば自動で追記します。
+        </p>
+        <div className="mt-4 flex items-center gap-4">
+          <button
+            onClick={refreshSheets}
+            disabled={refreshing}
+            className="rounded-full bg-indigo-500 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 hover:bg-indigo-400 disabled:opacity-60"
+          >
+            {refreshing ? 'チェック中...' : '更新チェック'}
+          </button>
+          {refreshResult && (
+            <span className="text-sm text-slate-200">{refreshResult}</span>
+          )}
+        </div>
+      </section>
 
       <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
         <h2 className="text-xl font-semibold">参加申請</h2>
