@@ -175,11 +175,18 @@ export async function POST(req: Request) {
 
           return { type: 'text' as const, value: trimmed };
         });
-        return { cells, detailUrl };
+        const rowData: any = { cells };
+        if (detailUrl) rowData.detailUrl = detailUrl;
+        return rowData;
       });
 
-      // 既存テーブルに新しい行を追記
-      const updatedRows = [...existingTable.rows, ...newTableRows];
+      // 既存テーブルに新しい行を追記（undefinedを除去）
+      const cleanRows = (existingTable.rows || []).map((r: any) => {
+        const cleaned: any = { cells: r.cells };
+        if (r.detailUrl) cleaned.detailUrl = r.detailUrl;
+        return cleaned;
+      });
+      const updatedRows = [...cleanRows, ...newTableRows];
       const updatedSections = [{
         ...pageData.sections[0],
         items: [{
