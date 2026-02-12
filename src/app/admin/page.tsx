@@ -59,6 +59,8 @@ export default function AdminPage() {
         <p className="mt-2 text-sm text-slate-200">承認とページの作成・公開を行います。</p>
       </div>
 
+      <AdminPageBuilder />
+
       <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
         <h2 className="text-xl font-semibold">参加申請</h2>
         <div className="mt-4 space-y-3">
@@ -82,8 +84,6 @@ export default function AdminPage() {
           )}
         </div>
       </section>
-
-      <AdminPageBuilder />
 
       <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
         <h2 className="text-xl font-semibold">ログインログ</h2>
