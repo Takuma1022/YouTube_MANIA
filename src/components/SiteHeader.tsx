@@ -24,7 +24,7 @@ export const SiteHeader = () => {
           <Link href="/dashboard" className="hover:text-white">
             会員ページ
           </Link>
-          {!isAdmin && (
+          {!userProfile && (
             <Link href="/apply" className="hover:text-white">
               申請
             </Link>
