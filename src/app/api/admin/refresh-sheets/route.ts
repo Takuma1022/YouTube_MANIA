@@ -57,24 +57,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: '管理者のみ操作できます。' }, { status: 403 });
     }
 
-    // sourceKey を持つ公開済みページを取得
-    const pagesSnap = await adminDb
-      .collection('pages')
-      .where('sourceKey', '!=', '')
-      .get();
+    // 全ページを取得し、sourceKeyを持つメインページだけフィルタ
+    const pagesSnap = await adminDb.collection('pages').get();
 
-    if (pagesSnap.empty) {
-      return NextResponse.json({ message: '更新対象のページがありません。', updated: 0 });
-    }
-
-    // sourceKey ごとにグループ化（メインページのみ）
     const pagesBySourceKey = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
-    pagesSnap.docs.forEach((doc) => {
-      const data = doc.data();
-      if (data.sourceKey && !data.parentSlug) {
-        pagesBySourceKey.set(data.sourceKey, doc);
+    pagesSnap.docs.forEach((d) => {
+      const data = d.data();
+      if (data.sourceKey && typeof data.sourceKey === 'string' && data.sourceKey.length > 0 && !data.parentSlug) {
+        pagesBySourceKey.set(data.sourceKey, d);
       }
     });
+
+    if (pagesBySourceKey.size === 0) {
+      return NextResponse.json({ message: '更新対象のページがありません。', updated: 0 });
+    }
 
     let updatedCount = 0;
     const results: string[] = [];
@@ -221,7 +217,8 @@ export async function POST(req: Request) {
       updated: updatedCount,
       details: results,
     });
-  } catch (error) {
-    return NextResponse.json({ message: '更新チェックに失敗しました。' }, { status: 500 });
+  } catch (error: any) {
+    const msg = error?.message || String(error);
+    return NextResponse.json({ message: `更新チェックに失敗しました: ${msg}` }, { status: 500 });
   }
 }
