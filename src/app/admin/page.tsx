@@ -57,17 +57,13 @@ export default function AdminPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
-        <h1 className="text-3xl font-semibold">管理画面</h1>
-        <p className="mt-2 text-sm text-slate-200">承認とページの作成・公開を行います。</p>
+        <h1 className="text-3xl font-semibold">投稿管理</h1>
       </div>
 
       <AdminPageBuilder />
 
       <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
         <h2 className="text-xl font-semibold">スプレッドシート更新チェック</h2>
-        <p className="mt-2 text-sm text-slate-200">
-          保存済みページのスプレッドシートに新しい行が追加されていないかチェックし、あれば自動で追記します。
-        </p>
         <div className="mt-4 flex items-center gap-4">
           <button
             onClick={refreshSheets}
@@ -84,7 +80,6 @@ export default function AdminPage() {
 
       <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
         <h2 className="text-xl font-semibold">ログインログ</h2>
-        <p className="mt-2 text-sm text-slate-200">最新50件を表示しています。</p>
         <div className="mt-4 space-y-3">
           {loginEvents.length === 0 ? (
             <p className="text-sm text-slate-200">ログがまだありません。</p>

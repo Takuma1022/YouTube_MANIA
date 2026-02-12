@@ -229,7 +229,7 @@ export default function MembersPage() {
     return (
       <div className="mx-auto max-w-3xl rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
         <h1 className="text-2xl font-semibold">ログインが必要です</h1>
-        <p className="mt-2 text-sm text-slate-200">管理画面を利用するにはログインしてください。</p>
+        <p className="mt-2 text-sm text-slate-200">投稿管理を利用するにはログインしてください。</p>
         <button
           onClick={signInWithGoogle}
           className="mt-6 rounded-full bg-white px-5 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-200"
@@ -253,7 +253,6 @@ export default function MembersPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
         <h1 className="text-3xl font-semibold">会員管理</h1>
-        <p className="mt-2 text-sm text-slate-200">会員の基本情報と最終ログインを確認できます。</p>
       </div>
 
       <div className="rounded-3xl border border-white/10 bg-white/5 p-8">

@@ -31,7 +31,7 @@ export const SiteHeader = () => {
           )}
           {isAdmin && (
             <Link href="/admin" className="hover:text-white">
-              管理画面
+              投稿管理
             </Link>
           )}
           {isAdmin && (

@@ -343,15 +343,9 @@ export const AdminPageBuilder = () => {
   return (
     <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
       <h2 className="text-xl font-semibold">ページ作成</h2>
-      <p className="mt-2 text-sm text-slate-200">
-        指示文からページ構成を作成し、会員ページに反映できます。
-      </p>
       <div className="mt-4 space-y-4">
         <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
           <p className="text-sm font-semibold text-slate-100">スプレッドシート取り込み</p>
-          <p className="mt-1 text-xs text-slate-300">
-            シートURLを貼り付けるだけで、ページを自動作成します。
-          </p>
           <div className="mt-3 flex flex-col gap-3 md:flex-row">
             <input
               value={sheetUrl}
