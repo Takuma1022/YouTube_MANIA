@@ -191,11 +191,12 @@ export const AdminPageBuilder = () => {
   };
 
   const computeTableView = (item: ContentItem) => {
-    if (item.type !== 'table' || !item.table) return null;
-    const totalRows = item.table.rows.length;
-    const emptyCounts = item.table.headers.map(() => 0);
-    const maxLengths = item.table.headers.map((header) => header.length);
-    item.table.rows.forEach((row) => {
+    const tbl = item.type === 'table' ? item.table : undefined;
+    if (!tbl) return null;
+    const totalRows = tbl.rows.length;
+    const emptyCounts = tbl.headers.map(() => 0);
+    const maxLengths = tbl.headers.map((header) => header.length);
+    tbl.rows.forEach((row) => {
       row.cells.forEach((cell, idx) => {
         if (cell.type === 'link') {
           const label = cell.label || '';
@@ -208,7 +209,7 @@ export const AdminPageBuilder = () => {
         }
       });
     });
-    const visibleIndexes = item.table.headers
+    const visibleIndexes = tbl.headers
       .map((_, idx) => idx)
       .filter((idx) => {
         const emptyRatio = totalRows ? emptyCounts[idx] / totalRows : 1;
@@ -251,10 +252,11 @@ export const AdminPageBuilder = () => {
     if (item.type === 'audio') {
       return <audio controls className="w-full" src={item.url || ''} />;
     }
-    if (item.type === 'table' && item.table) {
+    const tblPreview = item.type === 'table' ? item.table : undefined;
+    if (tblPreview) {
       const view = computeTableView(item);
-      const visibleIndexes = view?.visibleIndexes ?? item.table.headers.map((_, idx) => idx);
-      const widths = view?.widths ?? item.table.headers.map(() => 180);
+      const visibleIndexes = view?.visibleIndexes ?? tblPreview.headers.map((_, idx) => idx);
+      const widths = view?.widths ?? tblPreview.headers.map(() => 180);
       return (
         <div className="overflow-x-auto rounded-2xl border border-white/10 bg-black/30">
           <table className="min-w-[720px] w-full border-collapse text-xs">
@@ -262,17 +264,17 @@ export const AdminPageBuilder = () => {
               <tr className="bg-white/5 text-slate-300">
                 {visibleIndexes.map((headerIndex) => (
                   <th
-                    key={`${item.table.headers[headerIndex]}-${headerIndex}`}
+                    key={`${tblPreview.headers[headerIndex]}-${headerIndex}`}
                     className="border-b border-white/10 px-4 py-3 text-left font-semibold tracking-wide"
                     style={{ width: `${widths[headerIndex]}px` }}
                   >
-                    {prettifyHeader(item.table.headers[headerIndex])}
+                    {prettifyHeader(tblPreview.headers[headerIndex])}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {item.table.rows.map((row, rowIndex) => (
+              {tblPreview.rows.map((row, rowIndex) => (
                 <tr
                   key={`row-${rowIndex}`}
                   className="border-b border-white/5 text-slate-100 transition hover:bg-white/5"

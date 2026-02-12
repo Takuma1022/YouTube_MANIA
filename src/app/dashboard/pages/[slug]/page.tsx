@@ -109,7 +109,8 @@ const renderItem = (item: ContentItem) => {
   if (item.type === 'audio') {
     return <audio controls className="w-full" src={item.url || ''} />;
   }
-  if (item.type === 'table' && item.table) {
+  const table = item.type === 'table' ? item.table : undefined;
+  if (table) {
     const prettifyHeader = (header: string) => {
       const normalized = header.replace(/[_-]+/g, ' ').trim();
       if (/url|リンク/i.test(normalized)) return 'URL';
@@ -118,10 +119,10 @@ const renderItem = (item: ContentItem) => {
       if (/マニュアル|manual/i.test(normalized)) return 'マニュアル';
       return normalized || header;
     };
-    const totalRows = item.table.rows.length;
-    const emptyCounts = item.table.headers.map(() => 0);
-    const maxLengths = item.table.headers.map((header) => header.length);
-    item.table.rows.forEach((row) => {
+    const totalRows = table.rows.length;
+    const emptyCounts = table.headers.map(() => 0);
+    const maxLengths = table.headers.map((header) => header.length);
+    table.rows.forEach((row) => {
       row.cells.forEach((cell, idx) => {
         if (cell.type === 'link') {
           const label = cell.label || '';
@@ -134,7 +135,7 @@ const renderItem = (item: ContentItem) => {
         }
       });
     });
-    const visibleIndexes = item.table.headers
+    const visibleIndexes = table.headers
       .map((_, idx) => idx)
       .filter((idx) => {
         const emptyRatio = totalRows ? emptyCounts[idx] / totalRows : 1;
@@ -148,17 +149,17 @@ const renderItem = (item: ContentItem) => {
             <tr className="bg-white/5 text-slate-300">
               {visibleIndexes.map((headerIndex) => (
                 <th
-                  key={`${item.table.headers[headerIndex]}-${headerIndex}`}
+                  key={`${table.headers[headerIndex]}-${headerIndex}`}
                   className="border-b border-white/10 px-4 py-3 text-left font-semibold tracking-wide"
                   style={{ width: `${widths[headerIndex]}px` }}
                 >
-                  {prettifyHeader(item.table.headers[headerIndex])}
+                  {prettifyHeader(table.headers[headerIndex])}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-          {item.table.rows.map((row, rowIndex) => (
+          {table.rows.map((row, rowIndex) => (
             <tr
               key={`row-${rowIndex}`}
               className={`border-b border-white/5 text-slate-100 transition hover:bg-white/5 ${
